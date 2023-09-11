@@ -1,0 +1,19 @@
+# RCP CAN Bus Logger Script
+# Copyright (c) 2023 The SECRET Ingredient!
+# GNU General Public License v3.0
+#
+
+# Project dependencies
+.cache
+node_modules
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# Log Files
+tools/logs/*
+tools/logs/*.*
+
+# Make Files
+*.out
+*.sed

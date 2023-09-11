@@ -1,0 +1,5 @@
+-- RCP CAN Bus Logger Script
+-- Version, <version>
+-- Copyright (c) 2023 The SECRET Ingredient!
+-- GNU General Public License v3.0
+--
