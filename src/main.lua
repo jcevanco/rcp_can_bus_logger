@@ -101,7 +101,7 @@ function recvMessage(bus, timeout, limit)
   
   -- Define Message Processing Variables
   local count = 0
-  local id, ext, data = nil, nil, nil
+  local id, ext, data
 
   -- Set Defaults for Optional Parameters
   if bus == nil then bus = 0 end
@@ -118,7 +118,7 @@ function recvMessage(bus, timeout, limit)
     count = count + 1
 
     -- Verify Message Received and Log CAN Messages if Logging is Enabled
-    if id ~= nil then logCANData(bus, id, ext, message) end 
+    if id ~= nil then logCANData(bus, id, ext, data) end 
 
   -- Loop Threshold Condition
   until id == nil or count >= limit

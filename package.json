@@ -1,7 +1,7 @@
 {
-	"name": "rcp_can_bus_logger",
-	"version": "1.1.0",
-	"description": "Lua script for use with RaceCapture motorsports telemetry systems. This script allows the RaceCaputure to function as a CAN Bus message capture tool.",
+  "name": "rcp_can_bus_logger",
+  "version": "1.1.0",
+  "description": "Lua script for use with RaceCapture motorsports telemetry systems. This script allows the RaceCaputure to function as a CAN Bus message capture tool.",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jcevanco/rcp_can_bus_logger.git"
@@ -12,17 +12,18 @@
   },
   "dependencies": {
   },
-  "scripts": {
-  },
+  "scripts": {},
   "devDependencies": {
+    "luamin": "^1.0.4",
+    "rimraf": "^5.0.1"
   },
   "keywords": [
     "lua",
-		"racecapture",
-		"autosportlabs",
-		"motorsports",
-		"can"
- ],
+    "racecapture",
+    "autosportlabs",
+    "motorsports",
+    "can"
+  ],
   "license": "GNU General Public License v3.0",
   "homepage": "https://thesecretingredient.neocities.org"
 }
