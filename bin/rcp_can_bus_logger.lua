@@ -3,6 +3,153 @@
 -- Copyright (c) 2023 The SECRET Ingredient!
 -- GNU General Public License v3.0
 --
-local a={true,true}local b={500000,500000}local c={0,0}local d={5,5}local e={100,100}local f={}f[1]={{0},{0x000},{0x000}}f[2]={{0},{0x000},{0x000}}
-setTickRate(1000)local g=0;local h=1000;local i,j,k=1,2,3;for l=1,#a do if a[l]==true then initCAN(l-1,b[l],c[l])println(string.format("[CAN device] Adding Filters for CAN%d",l-1))for m=1,#f[l][i]do println(string.format("[CAN device] "..(setCANfilter(l-1,m-1,f[l][i][m],f[l][j][m],f[l][k][m])==1 and"Add Filter - "or"Add Fail - ").."BUS: [%d], ID: [%d], EXT: [%d], FLT: [0x%03X], MSK: [0x%03X]",l-1,m-1,f[l][i][m],f[l][j][m],f[l][k][m]))end end end;function _rM(n,o,p)local q=0;local r,s,t;if n==nil then n=0 end;if o==nil then o=100 end;if p==nil then p=100 end;repeat r,s,t=rxCAN(n,o)q=q+1;if r~=nil then _lD(n,r,s,t)end until r==nil or q>=p end;function _lD(n,r,s,t)local u,v,w,x,y,z,A=getDateTime()local B=string.format("%04d-%02d-%02d %02d:%02d:%02d.%03d %9d",u,v,w,x,y,z,A,getUptime())B=B..string.format(" %1d "..(s==1 and"%10d 0x%08X"or"%4d 0x%03X").." %02d",n+1,r,r,#t)B=B..string.format(string.rep(" 0x%02X",#t),unpack(t))println(B)end
-function onTick()if getUptime()-g>=h then collectgarbage()g=getUptime()end;for l=1,#a do if a[l]==true then _rM(l-1,d[l],e[l])end end end
+-- https://thesecretingredient.neocities.org
+-- https://github.com/jcevanco/rcp_can_bus_logger.git
+--
+-- This is free software: you can redistribute it and/or modify it
+-- under the terms of the GNU General Public License as published by
+-- the Free Software Foundation, either version 3 of the License, or
+-- (at your option) any later version.
+-- 
+-- This software is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+-- 
+-- See the GNU General Public License for more details. You should
+-- have received a copy of the GNU General Public License along with
+-- this code. If not, see <http://www.gnu.org/licenses/>.
+--
+-- This script is useful when reverse-engineering CAN
+-- bus data and trying to detect behavior patterns.
+-- It will passively monitor and log CAN message that 
+-- are read from the bus.
+-- 
+-- The RaceCapture Serial Terminal CLI can be used to
+-- view the log. Terminal capture can also be used to 
+-- pipe the log stream to a local logfile.
+--
+-- This script is best used in conjunction with the 
+-- following post processing scripts:
+--
+-- captureLog.sh - Captures the log to a text file
+-- checkLog.sh   - Checks log files for errors/inconsistencies
+-- processLog.sh - Processes log file for analysis
+-- splitLog.sh   - Splits log files into separate files by messsage ID
+--
+
+-- CAN Bus Port Settings { Port 1, Port 2 }
+local canEnable = { true, true }
+local canBaud   = { 500000, 500000 }
+local canTerm   = { 0, 0 }
+local canTimout = { 5, 5 } 
+local canLimit  = { 100, 100 } 
+local canFilter = {} 
+
+-- CAN Bus 1 Filter Configuration
+canFilter[1] = { 
+  {0,    }, -- Use 29-Bit CAN ID
+  {0x000,}, -- Filters
+  {0x000,}, -- Filter Masks
+}
+
+-- CAN Bus 2 Filter Configuration
+canFilter[2] = { 
+  {0,    }, -- Use 29-Bit CAN ID
+  {0x000,}, -- Filters
+  {0x000,}, -- Filter Masks
+}
+
+--
+-- END OF USER CONFIGURATION OPTIONS
+--
+
+-- Set Tick Rate
+setTickRate(1000)
+
+-- Garbage Collection
+local g_garbage = 0
+local gc_interval = 1000
+
+-- CAN Bus Filter Configuration Indexes
+local gc_ext, gc_flt, gc_msk = 1, 2, 3
+
+-- Initialize CAN Bus(es)
+for i=1, #canEnable do
+
+  -- Check CAN Bus Enable
+  if canEnable[i] == true then
+
+    -- Initialize CAN Bus
+    initCAN(i-1, canBaud[i], canTerm[i])
+
+    -- Log Addition of Bus Filters
+    println(string.format("[CAN device] Adding Filters for CAN%d", i - 1))
+
+    -- Create CAN Bus Message Filters
+    for j=1, #canFilter[i][gc_ext] do 
+
+        println(string.format("[CAN device] "
+          ..
+          (setCANfilter(i-1, j-1, canFilter[i][gc_ext][j], canFilter[i][gc_flt][j], canFilter[i][gc_msk][j]) == 1 and "Add Filter - " or "Add Fail - ") 
+          .. 
+          "BUS: [%d], ID: [%d], EXT: [%d], FLT: [0x%03X], MSK: [0x%03X]", i-1, j-1, canFilter[i][gc_ext][j], canFilter[i][gc_flt][j], canFilter[i][gc_msk][j]
+        ))        
+    end
+  end
+end
+
+-- Receive Response Messages
+function recvMessage(bus, timeout, limit)
+  
+  -- Define Message Processing Variables
+  local count = 0
+  local id, ext, data
+
+  -- Set Defaults for Optional Parameters
+  if bus == nil then bus = 0 end
+  if timeout == nil then timeout = 100 end
+  if limit == nil then limit = 100 end
+
+  -- Loop Through Buffer
+  repeat 
+
+    -- Retrieve Message From CAN Bus
+    id, ext, data = rxCAN(bus, timeout)
+
+    -- Increment Message Count
+    count = count + 1
+
+    -- Verify Message Received and Log CAN Messages if Logging is Enabled
+    if id ~= nil then logCANData(bus, id, ext, data) end 
+
+  -- Loop Threshold Condition
+  until id == nil or count >= limit
+
+end
+   
+-- Output CAN Bus Data to Info Log
+function logCANData(bus, id, ext, data)
+
+  -- Scope Variables
+  local y, m, d, h, mi, s, ms = getDateTime()
+
+  -- Build Output String
+  local output = string.format("%04d-%02d-%02d %02d:%02d:%02d.%03d %9d", y, m, d, h, mi, s, ms, getUptime())
+  output = output .. string.format(" %1d " .. (ext == 1 and "%10d 0x%08X" or "%4d 0x%03X") .." %02d", bus + 1, id, id, #data)
+  output = output .. string.format(string.rep(" 0x%02X", #data), unpack(data))
+  
+  -- Send Output to Log
+  println(output)
+
+end
+
+-- Process Tick Events 
+function onTick()
+
+  -- Gollect Garbage
+  if ((getUptime() - g_garbage) >= gc_interval) then collectgarbage() g_garbage = getUptime() end
+  
+  -- Log CAN Bus Messages
+  for i=1, #canEnable do if canEnable[i] == true then recvMessage(i-1, canTimout[i], canLimit[i]) end end
+
+end

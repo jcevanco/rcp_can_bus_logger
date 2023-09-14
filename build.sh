@@ -43,53 +43,7 @@ mkdir $project_build
 
 # Start Build With Comment Header
 echo "Building Project"
-cat $project_resource/head.lua > $project_make/make.out
-
-# Import Required Modules
-echo
-echo "Import Required Modules"
-
-# Get List of Required Modules
-cat $project_source/main.lua > $project_make/require.out
-sed -n -e '/require/s/.*(\(.*\)).*/\1/p' $project_make/require.out | while read i
-do
-    # Import Required Module
-    echo "Module: $i.lua"
-    sed -e "/$i/ { r $project_include/$i.lua
-                   d
-                 }" -i'.sed' $project_make/require.out
-done
-
-# Minimize Function Names
-echo
-echo "Process Script Functions"
-cat $project_make/require.out > $project_make/functions.out
-
-# Get List of Function Names
-sed -n -e '/function/s/.* \(.*\)(.*/\1/p' $project_make/functions.out | \
-sed -e '/onTick/d' | \
-while read i
-do
-    # Minimize Function Name in Script
-    echo "Function: $i"
-    j=`echo "$i" | sed -n -e 's/\([a-z]\).*\([A-Z]\).*/_\1\2/p'`
-    sed -e "s/$i(/$j(/g" -i'.sed' $project_make/functions.out
-done
-
-# Minimize Script with Luamin
-luamin_ver=`node_modules/.bin/luamin -v`
-echo
-echo "Minimize Lua Script - luamin, $luamin_ver"
-node_modules/.bin/luamin -f $project_make/functions.out >> $project_make/make.out
-
-# Get sed Script for Post Processing
-SED_SCRIPT=`sed -e '/^#/d' $project_resource/sed.md`
-
-# Run sed Commands to Adjust Layout
-sed -e "$SED_SCRIPT" -i'.sed' $project_make/make.out
-
-# Pruduce Assebmled Lua Script
-cat $project_make/make.out | sed -e "s/<version>/$project_version/g" > "$project_build/$project_name.lua"
+cat $project_source/main.lua | sed -e "s/<version>/$project_version/g" > "$project_build/$project_name.lua"
 
 echo
 echo "Build Complete: $project_name, v.$project_version"

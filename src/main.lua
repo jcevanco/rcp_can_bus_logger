@@ -1,8 +1,10 @@
 -- RCP CAN Bus Logger Script
+-- Version, <version>
 -- Copyright (c) 2023 The SECRET Ingredient!
 -- GNU General Public License v3.0
 --
 -- https://thesecretingredient.neocities.org
+-- https://github.com/jcevanco/rcp_can_bus_logger.git
 --
 -- This is free software: you can redistribute it and/or modify it
 -- under the terms of the GNU General Public License as published by
@@ -125,8 +127,21 @@ function recvMessage(bus, timeout, limit)
 
 end
    
--- Import Required Module
-require (log_can)
+-- Output CAN Bus Data to Info Log
+function logCANData(bus, id, ext, data)
+
+  -- Scope Variables
+  local y, m, d, h, mi, s, ms = getDateTime()
+
+  -- Build Output String
+  local output = string.format("%04d-%02d-%02d %02d:%02d:%02d.%03d %9d", y, m, d, h, mi, s, ms, getUptime())
+  output = output .. string.format(" %1d " .. (ext == 1 and "%10d 0x%08X" or "%4d 0x%03X") .." %02d", bus + 1, id, id, #data)
+  output = output .. string.format(string.rep(" 0x%02X", #data), unpack(data))
+  
+  -- Send Output to Log
+  println(output)
+
+end
 
 -- Process Tick Events 
 function onTick()
