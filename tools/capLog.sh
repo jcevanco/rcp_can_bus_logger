@@ -1,59 +1,65 @@
 #!/bin/sh
+# RCP CAN Bus Logger Scripts
+# Copyright (c) 2023 The SECRET Ingredient!
+# GNU General Public License v3.0
+#
+# https://thesecretingredient.neocities.org
+# https://github.com/jcevanco/rcp_can_bus_logger.git
+#
+# This is free software: you can redistribute it and/or modify it
+# under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# 
+# See the GNU General Public License for more details. You should
+# have received a copy of the GNU General Public License along with
+# this code. If not, see <http://www.gnu.org/licenses/>.
+#
+# This script captures the device log from a RaceCapture device that
+# is connected to a USB serial port.
+#
+# ------------------------------------------------------------------------------
+# IMPORTANT: Simultaneously Press the Control and C Keys to End the Capture
+# ------------------------------------------------------------------------------
+# CONFIGURATION ... Set Values as Required
 
-# 2020-Jul-17
-# This material is free and withhout warranty.  Use it in any way you see fit.
+# Set the Log Directory (Relative Path from Execution Directory)
+dir='./logs'
 
-# "quick 'n dirty" script to capture the log from a RaceCapture unit that's
-# connected via a USB port
+# Get a Timestamp to be Used for File Creation -- Format YYYY-MM-DD HH.MM.SS
+time_stamp=`date '+%Y-%m-%d %H.%M.%S'`
+
+# Define the Full Log Filename with Date/Timestamp
+filename="rcp_cap ${time_stamp}.txt"
+
+# Define the Name (or File Naming Expression) of the USB Device that will be
+# Used to Connect to the RaceCapture Device
+device='/dev/cu\.usbmodem*'
+
+#Define End-of-Line Chracter
+eol="\r"
 
 # ------------------------------------------------------------------------------
-# IMPORTANT: simultaneously press the control and C keys to end the capture
-# ------------------------------------------------------------------------------
-# CONFIGURATION ... set values as required
-
-# define the directory into which logs are to be captured
-DIR='logs'
-
-# get a timestamp to be used for file creation -- format YYYY-MM-DD HH.MM.SS
-# (can't use colons in Mac filenames!)
-TIMESTAMP=`/bin/date '+%Y-%m-%d %H.%M.%S'`
-
-# define the logfile name
-LOG_FILENAME="Data ${TIMESTAMP}.txt"
-
-# define the name (or file-naming expression) of the USB device that will be
-# used to connect to the RaceCapture device
-DEVICE='/dev/cu\.usbmodem*'
-
-# END OF CONFIGURATION SETTINGS
+# END OF USER CONFIGURATION SETTINGS
 # ------------------------------------------------------------------------------
 
-# define the EOL sequence
-EOL="\r"
-
-# find the RaceCapture port
-PORT=`/bin/ls $DEVICE`
-
-# ensure the DEVICE resolved to a valid device
-if test ! -c "$PORT"
-then
-   echo 'The DEVICE setting did not resolve to a valid (character special) file'
-   exit 1
-fi
-
-SHOW_IN_TERMINAL='0'
-
-# handle the options
+# Process Command Line Options
+show_in_terminal='0'
 while true
 do
-	if test "$1" = ''
-	then
-		break
-	fi
+	# Test Parameters
+	case $1 in 
+		('') 
+			break
+			;;
 
-	if test "$1" = '-h'
-	then
-		echo '
+		('-h')
+			echo \
+'
    Synopsis: captureRClog.sh [-h|-s]
       where: -h : prints this help message, then exits
              -s : also show the log-capture in the terminal window ... note that
@@ -63,57 +69,68 @@ Description: Captures the log from a USB-connected RaceCapture unit
       - this command must be run with root-level privileges
       - simultaneously press the control and C keys to end the capture
 '
-		exit
-	fi
+			exit
+			;;
 
-	if test "$1" = '-s'
-	then
-		SHOW_IN_TERMINAL='1'
-		shift
-	fi
+		('-s') 
+			show_in_terminal='1'
+			shift
+			;;
+	esac
 done
 
-# define the interrupt/"quit receiving" handler
-function doExit()
-{
-	echo "q$EOL" > "$PORT"
-	exit
-}
-#
-trap 'echo "${EOL}Quitting ..." ; doExit ; exit' TERM INT
+# Get the RaceCapture Device Port
+port=`ls $device`
 
-# create an empty capture file
-/bin/echo -n > "$DIR/$LOG_FILENAME"
-
-# wake up the RaceCapture device
-echo "$EOL" > "$PORT"
-read R < "$PORT"
-
-# send the viewLog command
-echo "viewLog$EOL" > "$PORT"
-read R < "$PORT"
-
-# when the log is not being shown in the terminal, show a little to verify that
-# the capture is working
-if test "$SHOW_IN_TERMINAL" = '0'
+# Test the RaceCapture Port Device
+if test ! -c $port
 then
-	echo "Here's a bit of logging to see whether the capture is working ..."
-	echo '----------------------------------------------------------------------'
-	/usr/bin/head -n 5 < "$PORT"
-	echo '----------------------------------------------------------------------'
-	echo 'Now sending the log to the file ...'
-	echo "Simultaneously press the control and C keys to end the capture ...\n"
-else
-	echo "\nSimultaneously press the control and C keys to end the capture ...\n"
+   echo 'The DEVICE setting did not resolve to a valid (character special) file'
+   exit 1
 fi
 
-# read/save the log data until interrupted
+# Create the Log File and Start RaceCapture LogViewer
+touch "$dir/$filename"
+
+# Wake Up the RaceCapture Device and Initiate the Log Capture
+echo $eol > $port; read R < $port
+echo "viewLog$eol" > $port; read R < $port
+
+# Display Header Information when Logging Starts
+case $show_in_terminal in
+	('0')
+		echo "Here's a bit of logging to see whether the capture is working ..."
+		echo '----------------------------------------------------------------------'
+		head -n 5 < $port
+		echo '----------------------------------------------------------------------'
+		echo 'Now sending the log to the file ...'
+		echo "Simultaneously press the control and C keys to end the capture ...\n"
+		;;
+	('1')
+		echo "\nSimultaneously press the control and C keys to end the capture ...\n"
+		;;
+esac
+
+# Interrupt Handler
+function doExit()
+{
+	echo "\nQuitting ..."
+	echo "q$eol" > $port
+	exit 0
+}
+
+# Trap [ctrl]+c Signal to End Log Capture
+trap doExit TERM INT
+
+# Push the Port Data Stream to the Log File Untill Interrupted
 while true
 do
-	if test "$SHOW_IN_TERMINAL" = '0'
-	then
-		/bin/cat < "$PORT" >> "$DIR/$LOG_FILENAME"
-	else
-		/bin/cat < "$PORT" | /usr/bin/tee -a "$DIR/$LOG_FILENAME"
-	fi
+	case $show_in_terminal in
+		('0') 
+			cat < $port >> "$dir/$filename"
+			;;
+		('1') 
+			cat < $port | tee -a "$dir/$filename"
+			;;
+	esac
 done
